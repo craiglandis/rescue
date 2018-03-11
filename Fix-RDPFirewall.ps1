@@ -1,0 +1,11 @@
+﻿Write-Host "Fixing Firewall rules";
+Enable-NetFirewallRule -DisplayGroup "Remote Desktop";
+Enable-NetFirewallRule -DisplayName "File and Printer Sharing (Echo Request - ICMPv4-In)";
+Enable-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)";
+Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile' -name 'EnableFirewall' 1 -Type Dword;
+Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile' -name 'EnableFirewall' 1 -Type Dword;
+Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile' -name 'EnableFirewall' 1 -Type Dword;
+Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile" -Name "DoNotAllowExceptions" -ErrorAction SilentlyContinue;
+Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile" -Name "DoNotAllowExceptions" -ErrorAction SilentlyContinue;
+Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile" -Name "DoNotAllowExceptions" -ErrorAction SilentlyContinue;
+Write-Host "Completed fixing Firewall rules";
