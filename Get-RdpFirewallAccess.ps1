@@ -1,7 +1,7 @@
 function GetRdpPort
 {
     $port = (Get-ItemProperty -Path $rdpTcpRegistryRegistryKey).$rdpPortRegistryValue
-    # Same as "return port ?? 0;" currently used in GetRdpPort() in CollectVMHealth
+    # This is same as "return port ?? 0;" currently used in GetRdpPort() in CollectVMHealth
     # Note that the PortNumber reg value exists and is set to 3389 by default, so it would be rare for the PortNumber reg value to not be present at all
     if (!$port){$port = 0} 
     return $port
