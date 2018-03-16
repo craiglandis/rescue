@@ -16,14 +16,14 @@ $message = "Set RDP to use 3389 and restart TermService [Y/N]?"
 $answer = read-host $message
 if ($answer.ToUpper() -eq 'Y') 
 {
+    $path = '"HKLM:\SYSTEM\CurrentControlSet\control\Terminal Server\Winstations\RDP-Tcp"'
+    $name = 'PortNumber'
+    $value = 3389
+    $type = 'DWORD'
+    $command = "set-itemproperty -path $path -name $name -value $value"
+    $result = invoke-expression $command
+    $command = "restart-service -name TermService -force"
+    $result = invoke-expression $command
+    $command = "get-itemproperty -path $path -name $name"
+    $result = invoke-expression -command $command
 }
-
-$path = '"HKLM:\SYSTEM\CurrentControlSet\control\Terminal Server\Winstations\RDP-Tcp"'
-$portNumber = 3389
-$type = 'DWORD'
-$command = "set-itemproperty -path $path -name $portNumber -Type $type"
-$result = invoke-expression $command
-$command = "restart-service -name TermService -force"
-$result = invoke-expression $command
-$command = "get-itemproperty -path $path -name $portNumber"
-invoke-expression -Command $command
