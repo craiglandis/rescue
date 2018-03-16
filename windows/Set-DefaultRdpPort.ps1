@@ -20,7 +20,7 @@ if ($answer.ToUpper() -eq 'Y')
     $name = 'PortNumber'
     $value = 3389
     $type = 'DWORD'
-    $command = "set-itemproperty -path $path -name $name -value $value"
+    $command = "set-itemproperty -path $path -name $name -value $value -type $type"
     $result = invoke-expression $command
     $command = "restart-service -name TermService -force"
     $result = invoke-expression $command
