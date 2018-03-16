@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Short description
+    Disables remote desktop
 .DESCRIPTION
     Long description
 .PARAMETER parameter1
