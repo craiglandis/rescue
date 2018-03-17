@@ -34,7 +34,14 @@ function Enable-Rdp
 
 function Set-MachineKeys
 {
-
+    $machineKeysFolderPath = 'C:\ProgramData\Microsoft\Crypto\RSA\MachineKeys'
+    icacls $machineKeysFolderPath /t /c > c:\temp\BeforeScript_permissions.txt 
+    takeown /f $machineKeysFolderPath /a /r 
+    icacls $machineKeysFolderPath /t /c /grant "NT AUTHORITY\System:(F)" 
+    icacls $machineKeysFolderPath /t /c /grant " NT AUTHORITY\NETWORK SERVICE:(R)" 
+    icacls $machineKeysFolderPath /t /c /grant "BUILTIN\Administrators:(F)" 
+    icacls $machineKeysFolderPath /t /c > c:\temp\AfterScript_permissions.txt 
+    restart-service TermService –force    
 }
 
 
@@ -119,13 +126,15 @@ function Set-RdpPort
 
 function Set-RdpFirewallRule
 {
-    Enable-NetFirewallRule -DisplayGroup "Remote Desktop";
-    Enable-NetFirewallRule -DisplayName "File and Printer Sharing (Echo Request - ICMPv4-In)";
-    Enable-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)";
-    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile' -name 'EnableFirewall' 1 -Type Dword;
-    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile' -name 'EnableFirewall' 1 -Type Dword;
-    Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile' -name 'EnableFirewall' 1 -Type Dword;
-    Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile" -Name "DoNotAllowExceptions" -ErrorAction SilentlyContinue;
-    Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile" -Name "DoNotAllowExceptions" -ErrorAction SilentlyContinue;
-    Remove-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile" -Name "DoNotAllowExceptions" -ErrorAction SilentlyContinue;    
+    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    Enable-NetFirewallRule -DisplayName "File and Printer Sharing (Echo Request - ICMPv4-In)"
+    Enable-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)"
+    
+    $firewallPolicyRegKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy' 
+    Set-ItemProperty -Path "$firewallPolicyRegKey\DomainProfile" -name 'EnableFirewall' 1 -Type 'DWORD'
+    Set-ItemProperty -Path "$firewallPolicyRegKey\PublicProfile" -name 'EnableFirewall' 1 -Type 'DWORD'
+    Set-ItemProperty -Path "$firewallPolicyRegKey\FirewallPolicy\StandardProfile" -name 'EnableFirewall' 1 -Type 'DWORD'
+    Remove-ItemProperty -Path "$firewallPolicyRegKey\DomainProfile" -Name 'DoNotAllowExceptions' -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path "$firewallPolicyRegKey\PublicProfile" -Name 'DoNotAllowExceptions' -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path "$firewallPolicyRegKey\StandardProfile" -Name 'DoNotAllowExceptions' -ErrorAction SilentlyContinue
 }

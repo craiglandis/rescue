@@ -1,4 +1,19 @@
-﻿
+﻿function write-log
+{
+    param(
+        [string]$status,    
+        [switch]$console
+    )    
+
+    $utcString = "[$(get-date (get-date).ToUniversalTime() -Format yyyy-MM-ddTHH:mm:ssZ)]"
+    ("$utcString $status" | out-string).Trim() | out-file $logFile -append
+
+    if ($console)
+    {
+        write-host ("$utcString $status" | out-string).Trim()
+    }
+}
+
 function Get-GuestAgentServices
 {
     Restart-Service -Name RdAgent
@@ -6,7 +21,8 @@ function Get-GuestAgentServices
 }
 function Get-MachineKeys
 {
-
+    $machineKeysFolderPath = 'C:\ProgramData\Microsoft\Crypto\RSA\MachineKeys'
+    icacls $machineKeysFolderPath /t /c > c:\temp\BeforeScript_permissions.txt 
 }
 function Get-TermService
 {
