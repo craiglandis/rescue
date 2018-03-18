@@ -14,15 +14,25 @@
     }
 }
 
-function Get-GuestAgentServices
-{
-    Restart-Service -Name RdAgent
-    Get-Service -Name RdAgent
-}
 function Get-MachineKeys
 {
     $machineKeysFolderPath = 'C:\ProgramData\Microsoft\Crypto\RSA\MachineKeys'
     icacls $machineKeysFolderPath /t /c > c:\temp\BeforeScript_permissions.txt 
+    #Check for OS version
+    if ($OSVersion.Major -eq 6)
+    {
+        #IIS 7 and above
+        $MachineKeyPath = "$env:SystemDrive\ProgramData\Microsoft\Crypto\RSA\MachineKeys\"
+    }
+    else
+    {
+        #IIS 6
+        $MachineKeyPath = "$env:SystemDrive\Documents and Settings\All Users\Application Data\Microsoft\Crypto\RSA\MachineKeys\"
+    }
+    $MachineGuid = (Get-ItemProperty -path "HKLM:\SOFTWARE\Microsoft\Cryptography\").MachineGuid
+    "MachineGuid in Registry = {0}" -f $MachineGuid | Out-File $logFile
+
+
 }
 function Get-TermService
 {
