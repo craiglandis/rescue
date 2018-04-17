@@ -33,7 +33,7 @@ function Get-RdpPort
 function Get-RdpFirewallRule($port)
 {
 
-    # Get-NetFirewallRule isn't on 2008R2
+    # Get-NetFirewallRule isn't on 2008 R2
     # Get-NetFirewallRule -DisplayGroup "Remote Desktop"
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa364724%28v=vs.85%29.aspx?f=255&MSPPError=-2147217396
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa366456(v=vs.85).aspx
