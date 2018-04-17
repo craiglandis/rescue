@@ -37,7 +37,7 @@ The rescue scripts are intended for the following scenario:
 
    Important: If the problem VM is currently using the maximum data disks for its VM size, you will not be able to connect the rescue disk unless you temporarily detach one of the existing data disks.   If you need to confirm the resource group name or VM name, you can run **`Get-AzureRmVM`**.
    ```PowerShell
-   .\Connect-RescueDisk.ps1 -resourceGroupName <resouceGroupName> -vmName <vmName>
+   .\Add-RescueDisk.ps1 -resourceGroupName <resouceGroupName> -vmName <vmName>
    ```
 
 
