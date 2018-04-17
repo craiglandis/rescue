@@ -45,7 +45,7 @@ The rescue scripts are intended for the following scenario:
 
 9. Run **`cmd`** to launch a CMD session in SAC.
 
-10. In CMD, switch to the drive where the rescue disk is attached. This will be drive letter E or higher, depending on the configuration of the VM. Run **`dir`** and look for the file **`Microsoft_Azure_Rescue_Disk`** on the root to confirm the drive letter of the rescue disk.
+10. In CMD, switch to the drive where the rescue disk is attached. This will be drive letter E or higher, depending on the configuration of the VM. Run **`dir`** and look for the file **`Microsoft_Azure_Support_Rescue_Disk`** on the root to confirm the drive letter of the rescue disk.
 11. Run PowerShell.
    ```PowerShell
    powershell
