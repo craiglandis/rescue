@@ -34,13 +34,14 @@ function show-progress()
 {
     param(
         [string]$text,
-        [string]$prefix = 'both'
+        [string]$prefix = 'timespan'
     )
 
     if ($prefix -eq 'timespan' -and $startTime)
     {
         $timespan = new-timespan -Start $startTime -End (get-date)
-        $timespanString = '[{0:hh}:{0:mm}:{0:ss}.{0:ff}]' -f $timespan
+        #$timespanString = '[{0:hh}:{0:mm}:{0:ss}.{0:ff}]' -f $timespan
+        $timespanString = '[{0:mm}:{0:ss}]' -f $timespan
         write-host $timespanString -nonewline -ForegroundColor Cyan
         write-host " $text"
     }
@@ -63,6 +64,8 @@ function show-progress()
 # Stop as soon as an error occurs.  Otherwise the first error can be hidden in lots of subsequent errors.
 $PSDefaultParameterValues['*:ErrorAction'] = 'Stop'
 $PSDefaultParameterValues['*:WarningAction'] = 'SilentlyContinue'
+
+$startTime = get-date
 
 $vm = get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName
 $vmstatus = get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName -Status
