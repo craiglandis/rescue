@@ -1,1 +1,1 @@
-Scripts for Azure VM guest OS Can't RDP/SSH mitigations
+Scripts for Azure VM guest OS Can't RDP/SSH mitigations 
