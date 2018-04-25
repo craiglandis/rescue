@@ -1,8 +1,9 @@
 param(
-    [string]$resourceGroupName,
-    [string]$vmName,
-    [string]$zipUrl = 'https://github.com/craiglandis/rescue/archive/master.zip',
-    [switch]$skipShellHWDetectionServiceCheck = $true
+    [Parameter(mandatory=$true)]
+    [String]$ResourceGroupName,
+    [Parameter(mandatory=$true)]
+    [String]$vmName,
+    [switch]$detachAllDataDisks
 )
 
 function show-progress
@@ -56,10 +57,17 @@ if($dataDisks)
     $dataDisks | where {$_.Name.StartsWith('rescue')} | foreach {
         $diskName = $_.Name
         show-progress '' -noTimeStamp
-        $answer = (read-host -Prompt "Detach data disk $($diskName)[Y/N]?").ToUpper
-        if($answer = 'Y')
+        if ($detachAllDataDisks)
         {
             get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName | Remove-AzureRmVMDataDisk -DataDiskNames $diskName | update-azurermvm
+        }
+        else
+        {
+            $answer = (read-host -Prompt "Detach data disk $($diskName)[Y/N]?").ToUpper
+            if($answer = 'Y')
+            {
+                get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName | Remove-AzureRmVMDataDisk -DataDiskNames $diskName | update-azurermvm
+            }
         }
     }
 }

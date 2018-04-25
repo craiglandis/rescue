@@ -21,13 +21,14 @@
     URL to zip file
 #>
 param(
-    [string]$resourceGroupName,
-    [string]$vmName,
+    [Parameter(mandatory=$true)]
+    [String]$ResourceGroupName,
+    [Parameter(mandatory=$true)]
+    [String]$vmName,
     [string]$zipUrl = 'https://github.com/craiglandis/rescue/archive/master.zip',
-    [switch]$skipShellHWDetectionServiceCheck = $true
+    [switch]$skipShellHWDetectionServiceCheck = $true,
+    [string]$vhdSizeMB = '20'
 )
-
-set-strictmode -version Latest
 
 function expand-zipfile($zipFile, $destination)
 {
@@ -73,9 +74,10 @@ function show-progress
     }        
 }
 
-# Stop as soon as an error occurs.  Otherwise the first error can be hidden in lots of subsequent errors.
+set-strictmode -version Latest
 $PSDefaultParameterValues['*:ErrorAction'] = 'Stop'
 $PSDefaultParameterValues['*:WarningAction'] = 'SilentlyContinue'
+$ProgressPreference = 'SilentlyContinue'
 
 $startTime = (get-date).ToUniversalTime()
 $timestamp = get-date $startTime -format yyyyMMddhhmmssff
@@ -84,12 +86,19 @@ $scriptName = (split-path -path $MyInvocation.MyCommand.Path -leaf).Split('.')[0
 $logFile = "$scriptPath\$($scriptName)_$($vmName)_$($timestamp).log"
 show-progress "Log file: $logFile"
 
+show-progress "[Running] Finding free drive letter"
 $usedDriveLetters = (get-psdrive -PSProvider filesystem).Name
 foreach ($letter in 'DEFGHIJKLMNOPQRSTUVWXYZ'.ToCharArray()) {
     if ($usedDriveLetters -notcontains $letter) {
         $driveLetter = "$($letter):"
+        show-progress "[Success] Using drive $driveLetter to mount VHD" -color green
         break
     }
+}
+
+if(!$driveLetter)
+{
+    show-progress "[Error] No free drive letter found. Unable to mount VHD." -color red
 }
 
 if ((get-service -Name ShellHwDetection).Status -eq 'Running' -and -not $skipShellHWDetectionServiceCheck)
@@ -111,7 +120,7 @@ if ((get-service -Name ShellHwDetection).Status -eq 'Running' -and -not $skipShe
 $vhdFile = "$scriptPath\rescue$timestamp.vhd"
 $createVhdScript = "$scriptPath\createVhd$timestamp.txt"
 $null = new-item $createVhdScript -itemtype File -force
-add-content -path $createVhdScript "create vdisk file=$vhdFile type=fixed maximum=20"
+add-content -path $createVhdScript "create vdisk file=$vhdFile type=fixed maximum=$vhdSizeMB"
 add-content -path $createVhdScript "select vdisk file=$vhdFile"
 add-content -path $createVhdScript "attach vdisk"
 add-content -path $createVhdScript "create partition primary"
@@ -119,7 +128,7 @@ add-content -path $createVhdScript "select partition 1"
 add-content -path $createVhdScript "format fs=FAT label=RESCUE quick"
 add-content -path $createVhdScript "assign letter=$driveLetter"
 add-content -path $createVhdScript "exit"
-show-progress "[Running] Using diskpart to create $vhdFile"
+show-progress "[Running] Using Diskpart to create $vhdSizeMB MB VHD"
 show-progress '' -noTimeStamp
 get-content $createVhdScript | foreach {show-progress $_ -noTimeStamp}
 show-progress '' -noTimeStamp
@@ -127,22 +136,22 @@ $null = diskpart /s $createVhdScript
 remove-item $createVhdScript
 if (test-path $vhdFile)
 {
-    show-progress "[Success] Used diskpart to create $vhdFile" -color green
+    show-progress "[Success] Created $vhdSizeMB MB VHD" -color green
 }
 else
 {
-    show-progress "[Error] Failed to create $vhdFile using diskpart" -color red
+    show-progress "[Error] Failed to create $vhdFile" -color red
     exit
 }
 
 $zipFile = "$scriptPath\rescue$timestamp.zip"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $webClient = new-object System.Net.WebClient
-show-progress "[Running] Downloading $zipUrl to $zipFile"
+show-progress "[Running] Downloading $zipUrl"
 $webClient.DownloadFile($zipUrl, $zipFile)
 if (test-path $zipFile)
 {
-    show-progress "[Success] Downloaded $zipUrl to $zipFile" -color green
+    show-progress "[Success] Downloaded $zipUrl" -color green
 }
 else
 {
@@ -150,11 +159,11 @@ else
 }
 
 $folderName = "$($zipUrl.Replace('.zip','').Split('/')[-3])-$($zipUrl.Replace('.zip','').Split('/')[-1])"
-show-progress "[Running] Extracting $zipFile to $driveLetter\$folderName"
+show-progress "[Running] Extracting $zipFile"
 expand-zipfile -zipFile $zipFile -destination $driveLetter
 if (test-path $driveLetter\$folderName)
 {
-    show-progress "[Success] Extracted $zipFile to $driveLetter\$folderName" -color green
+    show-progress "[Success] Extracted to $driveLetter\$folderName" -color green
 }
 else
 {
@@ -180,10 +189,13 @@ $detachVhdScript = "$scriptPath\detachVhd$timestamp.txt"
 $null = new-item $detachVhdScript -itemtype File -force
 add-content -path $detachVhdScript "select vdisk file=$vhdFile"
 add-content -path $detachVhdScript "detach vdisk"
-show-progress "[Running] Using diskpart to unmount $vhdFile"
+show-progress "[Running] Using Diskpart to detach VHD"
+show-progress '' -noTimeStamp
+get-content $detachVhdScript | foreach {show-progress $_ -noTimeStamp}
+show-progress '' -noTimeStamp
 $null = diskpart /s $detachVhdScript
 remove-item $detachVhdScript
-show-progress "[Success] Used diskpart to unmount $vhdFile" -color green
+show-progress "[Success] Detached VHD" -color green
 
 if (!$skipShellHWDetectionServiceCheck)
 {
@@ -203,15 +215,15 @@ if (!$skipShellHWDetectionServiceCheck)
     }    
 }
 
-show-progress "[Running] get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName"
+show-progress "[Running] Finding VM $vmName in resource group $resourceGroupName"
 $vm = get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName
 if ($vm)
 {
-    show-progress "[Success] get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName" -color green
+    show-progress "[Success] Found VM $vmName in resource group $resourceGroupName" -color green
 }
 else
 {
-    show-progress "[Error] get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName" -color red
+    show-progress "[Error] Unable to find VM $vmName in resource group $resourceGroupName" -color red
     exit
 }
 
@@ -222,7 +234,7 @@ $vmSize = $vm.hardwareprofile.vmsize
 $vmSizes = Get-AzureRmVMSize -Location $vm.Location
 $maxDataDiskCount = ($vmsizes | where name -eq $vmsize).MaxDataDiskCount
 $dataDisks = $vm.storageprofile.datadisks
-show-progress "[Running] Checking for an available LUN on VM $vmName"
+show-progress "[Running] Finding free LUN on VM $vmName"
 if ($dataDisks)
 {
     $luns = @(0..($MaxDataDiskCount-1))
@@ -241,12 +253,12 @@ else
 {
     $lun = 0
 }
-show-progress "[Success] LUN $lun is available" -color green
+show-progress "[Success] LUN $lun is free" -color green
 
-show-progress "[Running] Verifying boot diagnostics is enabled. Boot diagnostics is required for serial console to work"
+show-progress "[Running] Verifying boot diagnostics is enabled"
 if ($serialLogUri)
 {
-    show-progress "[Success] SerialConsoleLogBlobUri: $serialLogUri" -color green
+    show-progress "[Success] Boot diagnostics is enabled" -color green
 }
 else
 {
@@ -261,75 +273,48 @@ else
 # Creating a managed disk for the rescue disk would require keeping a copy of the rescue VHD in every region, because you can only create a managed disk from a VHD that resides in the same region.
 $destStorageAccountName = $serialLogUri.Split('/')[2].Split('.')[0]        
 $destStorageContainer = $serialLogUri.Split('/')[-2]
-show-progress "[Running] get-azurermstorageaccount -ResourceGroupName $resourceGroupName -Name $destStorageAccountName"
+show-progress "[Running] Finding boot diagnostics storage account"
 $destStorageAccount = get-azurermstorageaccount -ResourceGroupName $resourceGroupName -Name $destStorageAccountName
 if ($destStorageAccount)
 {
-    show-progress "[Success] get-azurermstorageaccount -ResourceGroupName $resourceGroupName -Name $destStorageAccountName" -color green
+    show-progress "[Success] Found boot diagnostics storage account $destStorageAccountName" -color green
 }
 else
 {
-    show-progress "[Error] get-azurermstorageaccount -ResourceGroupName $resourceGroupName -Name $destStorageAccountName" -color red
+    show-progress "[Error] Unable to find boot diagnostics storage account $destStorageAccountName" -color red
     exit
 }
 $destStorageAccountKey = ($destStorageAccount | Get-AzureRmStorageAccountKey)[0].Value
-show-progress "[Running] Getting storage context for storage account $destStorageAccountName"
+show-progress "[Running] Getting storage context for $destStorageAccountName"
 $destStorageContext = New-AzureStorageContext -StorageAccountName $destStorageAccountName -StorageAccountKey $destStorageAccountKey
 if ($destStorageContext)
 {
-    show-progress "[Success] Got storage context for storage account $destStorageAccountName" -color green
+    show-progress "[Success] Got storage context for $destStorageAccountName" -color green
 }
 else
 {
-    show-progress "[Error] Failed to get storage context for storage account $destStorageAccountName" -color red
+    show-progress "[Error] Failed to get storage context for $destStorageAccountName" -color red
 }
 
 $rescueDiskBlobName = split-path $vhdFile -leaf
 $rescueDiskCopyDiskName = $rescueDiskBlobName.Split('.')[0]
 $rescueDiskBlobCopyUri = "$($deststoragecontext.BlobEndPoint)$destStorageContainer/$(split-path $vhdFile -leaf)"
-show-progress "[Running] add-azurermvhd -resourceGroupName $resourceGroupName -destination $rescueDiskBlobCopyUri -LocalFilePath $vhdFile"
-show-progress ''
+show-progress "[Running] Uploading VHD to storage account $destStorageAccountName"
+show-progress '' -noTimeStamp
 $result = add-azurermvhd -resourceGroupName $resourceGroupName -destination $rescueDiskBlobCopyUri -LocalFilePath $vhdFile
-show-progress ''
+show-progress '' -noTimeStamp
 if ($result.DestinationUri)
 {
-    show-progress "[Success] add-azurermvhd -resourceGroupName $resourceGroupName -destination $rescueDiskBlobCopyUri -LocalFilePath $vhdFile" -color green
+    show-progress "[Success] Uploaded VHD to storage account $destStorageAccountName" -color green
 }
 else
 {
-    show-progress "[Error] add-azurermvhd -resourceGroupName $resourceGroupName -destination $rescueDiskBlobCopyUri -LocalFilePath $vhdFile" -color red
+    show-progress "[Error] Failed to upload VHD to storage account $destStorageAccountName" -color red
 }
-
-<#
-show-progress "Copying rescue disk into boot diagnostics storage account $destStorageAccountName"
-$rescueDiskBlobName = $rescueDiskUri.Split('/')[-1]
-$rescueDiskCopyDiskName = "$($rescueDiskBlobName.Split('.')[0])$vmName"
-$rescueDiskCopyBlobName = "$rescueDiskCopyDiskName.vhd"
-$rescueDiskBlobCopy = Start-AzureStorageBlobCopy -AbsoluteUri $rescueDiskUri -DestContainer $destStorageContainer -DestBlob $rescueDiskCopyBlobName -DestContext $destStorageContext -Force
-$rescueDiskBlobCopyUri = $rescueDiskBlobCopy.ICloudBlob.Uri
-
-$timeout = 60
-do {
-    $secondsInterval = 5
-    start-sleep -Seconds $secondsInterval
-    $secondsElapsed += $secondsInterval
-    $rescueDiskBlobCopyStatus = (Get-AzureStorageBlobCopyState -CloudBlob $rescueDiskBlobCopy.ICloudBlob -Context $destStorageContext).Status
-} until (($rescueDiskBlobCopyStatus -eq 'Success') -or ($secondsElapsed -ge $timeout))
-
-if ($rescueDiskBlobCopyStatus -eq 'Success')
-{
-    show-progress "Rescue disk copied to $rescueDiskBlobCopyUri"
-}
-else 
-{
-    show-progress "Copied failed or exceeded the $timeout second timeout defined in the script"    
-    exit
-}
-#>
 
 if($managedDisk)
 {
-    show-progress "[Running] Creating managed disk from VHD that was copied into boot diagnostics storage account"
+    show-progress "[Running] Creating managed disk from uploaded VHD"
     $diskConfig = New-AzureRmDiskConfig -AccountType $accountType -Location $vm.Location -CreateOption Import -StorageAccountId $destStorageAccount.Id -SourceUri $rescueDiskBlobCopyUri
     if (!$diskConfig)
     {
@@ -339,13 +324,13 @@ if($managedDisk)
     $disk = New-AzureRmDisk -Disk $diskConfig -ResourceGroupName $resourceGroupName -DiskName $rescueDiskCopyDiskName
     if ($disk)
     {
-        show-progress "[Success] Created managed disk $rescueDiskCopyDiskName" -color green
+        show-progress "[Success] Created disk $rescueDiskCopyDiskName" -color green
     }
     else
     {
         show-progress "[Error] Failed to create disk $rescueDiskCopyDiskName" -color red
     }
-    show-progress "[Running] Attaching managed disk $rescueDiskCopyDiskName to VM $vmName"    
+    show-progress "[Running] Attaching disk $rescueDiskCopyDiskName to VM $vmName"    
     $vm = Add-AzureRmVMDataDisk -VM $vm -Name $rescueDiskCopyDiskName -ManagedDiskId $disk.Id -Lun $lun -CreateOption Attach -StorageAccountType $accountType
     $vm = Update-AzureRmVM -VM $vm -ResourceGroupName $resourceGroupName
 }
@@ -360,7 +345,7 @@ $vm = get-azurermvm -ResourceGroupName $resourceGroupName -Name $vmName
 $rescueDataDisk = $vm.storageprofile.datadisks | where LUN -eq $lun 
 if ($rescueDataDisk)
 {
-    show-progress "[Success] Attached disk $rescueDiskCopyDiskName" -color green
+    show-progress "[Success] Attached disk $rescueDiskCopyDiskName to VM $vmName" -color green
 }
 else 
 {
