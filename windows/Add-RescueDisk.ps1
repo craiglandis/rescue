@@ -172,9 +172,9 @@ if($zipUrl -match 'github.com' -and $zipUrl -match 'archive')
 
 show-progress "VHD contents:"
 $command = "$env:windir\system32\tree.com $driveLetter /a /f"
-show-progress '' -noTimeStamp
+show-progress " " -noTimeStamp
 invoke-expression $command
-show-progress '' -noTimeStamp
+show-progress " " -noTimeStamp
 
 $detachVhdScript = "$scriptPath\detachVhd$timestamp.txt"
 $null = new-item $detachVhdScript -itemtype File -force
