@@ -54,8 +54,8 @@ The rescue scripts are intended for the following scenario:
    ```PowerShell
    remove-module psreadline
    ```
-13. Switch into the Windows folder and run Get-VMFindings.ps1.
+13. Switch into the Windows folder and run Get-FirewallDiagnostic.ps1.
    ```PowerShell
    CD windows
-   .\Get-VMFindings.ps1
+   .\Get-FirewallDiagnostic.ps1
    ```
